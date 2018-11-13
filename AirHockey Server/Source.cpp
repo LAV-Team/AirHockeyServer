@@ -3,24 +3,31 @@
 #include <boost/bind.hpp>
 #include <boost/system/error_code.hpp>
 #include <boost/asio.hpp>
+#include <boost/function.hpp>
 
-#define BIND(x) boost::bind(&SelfType::x, shared_from_this())
-#define BIND_WITH_1_ARG(x, y) boost::bind(&SelfType::x, shared_from_this(), y)
-#define BIND_WITH_2_ARGS(x, y, z) boost::bind(&SelfType::x, shared_from_this(), y, z)
+#define BIND(a) boost::bind(&SelfType::a, shared_from_this())
+#define BIND_WITH_1_ARG(a, b) boost::bind(&SelfType::a, shared_from_this(), b)
+#define BIND_WITH_2_ARGS(a, b, c) boost::bind(&SelfType::a, shared_from_this(), b, c)
+#define BIND_WITH_3_ARGS(a, b, c, d) boost::bind(&SelfType::a, shared_from_this(), b, c, d)
 
-static size_t const MAX_MESSAGE_LENGTH = 64U;
+static size_t const BUFFER_LENGTH = 256U;
+static char const COMMAND_END = ';';
 static char const MESSAGE_END = '\n';
 
-class ClientHandler
-	: public boost::enable_shared_from_this<ClientHandler>
+
+
+class Receiver
+	: public boost::enable_shared_from_this<Receiver>
 	, boost::noncopyable
 {
 public:
-	typedef boost::shared_ptr <ClientHandler> SharedPtr;
+	typedef boost::shared_ptr <Receiver> SharedPtr;
+	typedef boost::function<void(std::string const&)> AnswerHandler;
+	typedef boost::function<void(boost::system::error_code const&)> ErrorHandler;
 
-	static SharedPtr Create(boost::asio::io_service& service)
+	static SharedPtr Create(boost::asio::io_service& service, AnswerHandler commandHandler, ErrorHandler errorHandler)
 	{
-		SharedPtr clientHandler{ new ClientHandler{ service } };
+		SharedPtr clientHandler{ new Receiver{ service, commandHandler, errorHandler } };
 		return clientHandler;
 	}
 
@@ -40,7 +47,9 @@ public:
 			return;
 		}
 		isStarted_ = true;
-		Read();
+		
+		message_.clear();
+		Read_();
 	}
 
 	void Stop()
@@ -49,77 +58,188 @@ public:
 			return;
 		}
 		isStarted_ = false;
+
 		sock_.close();
 	}
 
-	void Read()
-	{
-		boost::asio::async_read(
-			sock_,
-			boost::asio::buffer(readBuffer_),
-			BIND_WITH_2_ARGS(IsReadingCompleted, _1, _2),
-			BIND_WITH_2_ARGS(OnRead, _1, _2)
-		);
-	}
+private:
+	typedef Receiver SelfType;
 
-	void Write(std::string const& message)
+	boost::asio::ip::tcp::socket sock_;
+	bool isStarted_;
+	char readBuffer_[BUFFER_LENGTH];
+	std::string message_;
+	AnswerHandler answerHandler_;
+	ErrorHandler errorHandler_;
+
+	Receiver(boost::asio::io_service& service, AnswerHandler answerHandler, ErrorHandler errorHandler)
+		: sock_{ service }
+		, isStarted_{ false }
+		, answerHandler_{ answerHandler }
+		, errorHandler_{ errorHandler }
+	{}
+
+	void Read_()
 	{
 		if (!isStarted_) {
 			return;
 		}
-		std::copy(message.begin(), message.end(), writeBuffer_);
 
-		sock_.async_write_some(
-			boost::asio::buffer(writeBuffer_, message.size()),
-			BIND_WITH_2_ARGS(OnWrite, _1, _2)
+		boost::asio::async_read(
+			sock_,
+			boost::asio::buffer(readBuffer_),
+			BIND_WITH_2_ARGS(IsReadingCompleted_, _1, _2),
+			BIND_WITH_2_ARGS(OnRead_, _1, _2)
 		);
 	}
 
-	size_t IsReadingCompleted(boost::system::error_code const& error, size_t bytes)
+	size_t IsReadingCompleted_(boost::system::error_code const& error, size_t bytes)
+	{
+		return error || (bytes > 0 && (
+			readBuffer_[bytes - 1] == COMMAND_END || readBuffer_[bytes - 1] == MESSAGE_END
+		)) ? 0 : 1;
+	}
+
+	void OnRead_(boost::system::error_code const& error, size_t bytes)
 	{
 		if (error) {
-			return 0;
+			Stop();
+			errorHandler_(error);
+			return;
 		}
-		// If > max length => read last part
-		// 0 if comleted else 1
-		return std::find(readBuffer_, readBuffer_ + bytes, MESSAGE_END) < readBuffer_ + bytes ? 0 : 1;
+
+		message_ += std::string{readBuffer_, bytes};
+
+		if (bool isEnd{ message_.back() == MESSAGE_END }; message_.back() == COMMAND_END || isEnd) {
+			message_.pop_back();
+			if (!message_.empty()) {
+				answerHandler_(message_);
+			}
+			if (isEnd) {
+				Stop();
+				return;
+			}
+			else {
+				message_.clear();
+				Read_();
+			}
+		}
+		else {
+			Read_();
+		}
+	}
+};
+
+
+
+class Transmitter
+	: public boost::enable_shared_from_this<Transmitter>
+	, boost::noncopyable
+{
+public:
+	typedef boost::shared_ptr<Transmitter> SharedPtr;
+	typedef boost::function<void(boost::system::error_code const&)> ErrorHandler;
+
+	static SharedPtr Create(boost::asio::io_service& service,
+		boost::asio::ip::tcp::endpoint const& ep, ErrorHandler errorHandler)
+	{
+		SharedPtr sender{ new Transmitter{ service, ep, errorHandler } };
+		return sender;
 	}
 
-	void OnRead(boost::system::error_code const& error, size_t bytes)
+	boost::asio::ip::tcp::socket& Sock()
 	{
-		if (!error) {
-			std::string message(readBuffer_, bytes);
-			std::cout << message;
-			Write(message);
-		}
-		Stop();
+		return sock_;
 	}
 
-	void OnWrite(boost::system::error_code const& error, size_t bytes)
+	void Send(std::string const& message)
 	{
-		Read();
+		if (sock_.is_open()) {
+			Write_(message);
+		}
+		else {
+			Connect_(endpoint_, BIND_WITH_1_ARG(Write_, message));
+		}
+	}
+
+	void Cancel()
+	{
+		if (sock_.is_open()) {
+			Write_(std::string{ MESSAGE_END });
+		}
+	}
+
+	void Close()
+	{
+		sock_.close();
 	}
 
 private:
-	typedef ClientHandler SelfType;
+	typedef Transmitter SelfType;
+	typedef boost::function<void()> OnConnect;
 
 	boost::asio::ip::tcp::socket sock_;
-	char readBuffer_[MAX_MESSAGE_LENGTH];
-	char writeBuffer_[MAX_MESSAGE_LENGTH];
-	bool isStarted_;
+	boost::asio::ip::tcp::endpoint const& endpoint_;
+	ErrorHandler errorHandler_;
 
-	ClientHandler(boost::asio::io_service& service)
+	Transmitter(boost::asio::io_service& service, boost::asio::ip::tcp::endpoint const& ep, ErrorHandler errorHandler)
 		: sock_{ service }
-		, isStarted_{ false }
+		, endpoint_{ ep }
+		, errorHandler_{ errorHandler }
 	{}
+
+	void Connect_(boost::asio::ip::tcp::endpoint const& ep, OnConnect onConnect = OnConnect())
+	{
+		sock_.async_connect(ep, BIND_WITH_2_ARGS(OnConnect_, onConnect, _1));
+	}
+
+	void OnConnect_(OnConnect onConnect, const boost::system::error_code& error)
+	{
+		if (error) {
+			Close();
+			errorHandler_(error);
+			return;
+		}
+		if (onConnect) {
+			onConnect();
+		}
+	}
+
+	void Write_(std::string const& message)
+	{
+		bool isEnd{ message == std::string{ MESSAGE_END } };
+
+		std::string copy{ message };
+		if (!isEnd) {
+			copy += COMMAND_END;
+		}
+		sock_.async_write_some(
+			boost::asio::buffer(copy.c_str(), copy.size()),
+			BIND_WITH_3_ARGS(OnWrite_, _1, _2, isEnd)
+		);
+	}
+
+	void OnWrite_(boost::system::error_code const& error, size_t bytes, bool isEnd = false)
+	{
+		if (error) {
+			Close();
+			errorHandler_(error);
+			return;
+		}
+		if (isEnd) {
+			Close();
+		}
+	}
 };
+
+
 
 class Server
 	: public boost::enable_shared_from_this<Server>
 	, boost::noncopyable
 {
 public:
-	typedef boost::shared_ptr <Server> SharedPtr;
+	typedef boost::shared_ptr<Server> SharedPtr;
 
 	static SharedPtr Create(unsigned short port = 4444)
 	{
@@ -139,9 +259,7 @@ public:
 		}
 		isStarted_ = true;
 
-		ClientHandler::SharedPtr client = ClientHandler::Create(service_);
-		acceptor_.async_accept(client->Sock(), BIND_WITH_2_ARGS(HandleAccept, client, _1));
-
+		CreateReceiver();
 		service_.run();
 	}
 
@@ -152,15 +270,33 @@ public:
 		}
 		isStarted_ = false;
 
-		service_.stop();
+		acceptor_.close();
 	}
 
-	void HandleAccept(ClientHandler::SharedPtr client, boost::system::error_code const& error)
+	void CreateReceiver()
+	{
+		Receiver::SharedPtr client = Receiver::Create(
+			service_,
+			BIND_WITH_1_ARG(CommandHandler, _1),
+			BIND_WITH_1_ARG(ErrorHandler, _1)
+		);
+		acceptor_.async_accept(client->Sock(), BIND_WITH_2_ARGS(HandleAccept, client, _1));
+	}
+
+	void HandleAccept(Receiver::SharedPtr client, boost::system::error_code const& error)
 	{
 		client->Start();
-		
-		ClientHandler::SharedPtr newClient = ClientHandler::Create(service_);
-		acceptor_.async_accept(newClient->Sock(), BIND_WITH_2_ARGS(HandleAccept, newClient, _1));
+		CreateReceiver();
+	}
+
+	void CommandHandler(std::string const& command)
+	{
+		std::cout << command << std::endl;
+	}
+
+	void ErrorHandler(boost::system::error_code const& error)
+	{
+		std::cout << error.message() << std::endl;
 	}
 
 private:
@@ -177,8 +313,10 @@ private:
 	{}
 };
 
+
+
 int main(int argc, char* argv[])
 {
-	Server::SharedPtr server{ Server::Create(8001) };
+	Server::SharedPtr server{ Server::Create(4444) };
 	server->Start();
 }
