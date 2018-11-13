@@ -1,0 +1,41 @@
+﻿
+Microsoft Visual Studio Solution File, Format Version 12.00
+# Visual Studio 15
+VisualStudioVersion = 15.0.28010.2050
+MinimumVisualStudioVersion = 10.0.40219.1
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "AirHockey Server", "AirHockey Server\AirHockey Server.vcxproj", "{089CDD33-4C36-49D7-95A1-1D2630C81E9A}"
+EndProject
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "AirHockey Client", "..\AirHockey Client\AirHockey Client\AirHockey Client.vcxproj", "{A2743AA0-3BD8-4AEF-A9C5-306964066CEF}"
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|x64 = Debug|x64
+		Debug|x86 = Debug|x86
+		Release|x64 = Release|x64
+		Release|x86 = Release|x86
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{089CDD33-4C36-49D7-95A1-1D2630C81E9A}.Debug|x64.ActiveCfg = Debug|x64
+		{089CDD33-4C36-49D7-95A1-1D2630C81E9A}.Debug|x64.Build.0 = Debug|x64
+		{089CDD33-4C36-49D7-95A1-1D2630C81E9A}.Debug|x86.ActiveCfg = Debug|Win32
+		{089CDD33-4C36-49D7-95A1-1D2630C81E9A}.Debug|x86.Build.0 = Debug|Win32
+		{089CDD33-4C36-49D7-95A1-1D2630C81E9A}.Release|x64.ActiveCfg = Release|x64
+		{089CDD33-4C36-49D7-95A1-1D2630C81E9A}.Release|x64.Build.0 = Release|x64
+		{089CDD33-4C36-49D7-95A1-1D2630C81E9A}.Release|x86.ActiveCfg = Release|Win32
+		{089CDD33-4C36-49D7-95A1-1D2630C81E9A}.Release|x86.Build.0 = Release|Win32
+		{A2743AA0-3BD8-4AEF-A9C5-306964066CEF}.Debug|x64.ActiveCfg = Debug|x64
+		{A2743AA0-3BD8-4AEF-A9C5-306964066CEF}.Debug|x64.Build.0 = Debug|x64
+		{A2743AA0-3BD8-4AEF-A9C5-306964066CEF}.Debug|x86.ActiveCfg = Debug|Win32
+		{A2743AA0-3BD8-4AEF-A9C5-306964066CEF}.Debug|x86.Build.0 = Debug|Win32
+		{A2743AA0-3BD8-4AEF-A9C5-306964066CEF}.Release|x64.ActiveCfg = Release|x64
+		{A2743AA0-3BD8-4AEF-A9C5-306964066CEF}.Release|x64.Build.0 = Release|x64
+		{A2743AA0-3BD8-4AEF-A9C5-306964066CEF}.Release|x86.ActiveCfg = Release|Win32
+		{A2743AA0-3BD8-4AEF-A9C5-306964066CEF}.Release|x86.Build.0 = Release|Win32
+	EndGlobalSection
+	GlobalSection(SolutionProperties) = preSolution
+		HideSolutionNode = FALSE
+	EndGlobalSection
+	GlobalSection(ExtensibilityGlobals) = postSolution
+		SolutionGuid = {E800F553-1C74-4B8D-B553-F10F6BA82434}
+	EndGlobalSection
+EndGlobal
