@@ -8,6 +8,12 @@ Transmitter::SharedPtr Transmitter::Create(boost::asio::io_service& service,
 	return transmitter;
 }
 
+Transmitter::Transmitter(boost::asio::io_service& service)
+	: sock_{ service }
+	, transfersCount_{ 0U }
+	, closed_{ false }
+{}
+
 void Transmitter::SetErrorHandler(ErrorHandler errorHandler)
 {
 	errorHandler_ = errorHandler;
@@ -22,12 +28,6 @@ std::string Transmitter::GetSessionId() const
 {
 	return sessionId_;
 }
-
-Transmitter::Transmitter(boost::asio::io_service& service)
-	: sock_{ service }
-	, transfersCount_{ 0U }
-	, closed_{ false }
-{}
 
 boost::asio::ip::tcp::socket& Transmitter::Sock()
 {

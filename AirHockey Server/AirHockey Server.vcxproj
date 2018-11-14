@@ -154,12 +154,14 @@
   <ItemGroup>
     <ClCompile Include="Receiver.cpp" />
     <ClCompile Include="Server.cpp" />
+    <ClCompile Include="ServerMain.cpp" />
     <ClCompile Include="Transceiver.cpp" />
     <ClCompile Include="Transmitter.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="Global.hpp" />
     <ClInclude Include="Receiver.hpp" />
+    <ClInclude Include="Server.hpp" />
     <ClInclude Include="Transceiver.hpp" />
     <ClInclude Include="Transmitter.hpp" />
   </ItemGroup>
