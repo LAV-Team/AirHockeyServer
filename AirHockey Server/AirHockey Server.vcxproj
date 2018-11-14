@@ -152,12 +152,16 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
-    <ClCompile Include="Source.cpp">
-      <LanguageStandard Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">stdcpplatest</LanguageStandard>
-      <LanguageStandard Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">stdcpplatest</LanguageStandard>
-      <LanguageStandard Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">stdcpplatest</LanguageStandard>
-      <LanguageStandard Condition="'$(Configuration)|$(Platform)'=='Release|x64'">stdcpplatest</LanguageStandard>
-    </ClCompile>
+    <ClCompile Include="Receiver.cpp" />
+    <ClCompile Include="Server.cpp" />
+    <ClCompile Include="Transceiver.cpp" />
+    <ClCompile Include="Transmitter.cpp" />
+  </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="Global.hpp" />
+    <ClInclude Include="Receiver.hpp" />
+    <ClInclude Include="Transceiver.hpp" />
+    <ClInclude Include="Transmitter.hpp" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">
