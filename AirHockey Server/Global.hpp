@@ -17,4 +17,6 @@ static size_t const BUFFER_LENGTH = 256U;
 static char const COMMAND_END = ';';
 static char const MESSAGE_END = '\n';
 
+static size_t const SESSION_ID_LENGTH = 8U;
+
 #endif // __GLOBAL_INCLUDED__

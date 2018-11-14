@@ -1,4 +1,5 @@
 #include <iostream>
+#include <string>
 #include "Transceiver.hpp"
 
 void ErrorHandler(boost::system::error_code const& error)
@@ -11,27 +12,32 @@ void AnswerHandler(std::string const& answer)
 	std::cout << answer << std::endl;
 }
 
+void Input(Transceiver::SharedPtr transceiver)
+{
+	std::string message{};
+	while (std::getline(std::cin, message) && message != "/stop") {
+		transceiver->Send(message);
+	}
+	transceiver->Cancel();
+}
+
 int main(int argc, char* argv[])
 {
 	setlocale(LC_ALL, "Russian");
 
-	boost::asio::io_service service_;
-	boost::asio::ip::tcp::endpoint ep(boost::asio::ip::address::from_string("127.0.0.1"), 4444);
+	boost::asio::io_service service;
 	
-	Transceiver::SharedPtr transceiver{ Transceiver::Create(service_) };
+	Transceiver::SharedPtr transceiver{ Transceiver::Create(service) };
 	transceiver->SetErrorHandler(ErrorHandler);
 	transceiver->SetAnswerHandler(AnswerHandler);
+	
+	boost::asio::ip::tcp::endpoint ep(boost::asio::ip::address::from_string("127.0.0.1"), 4444);
 	transceiver->Connect(ep);
+	
 	transceiver->StartReading();
+	std::thread input{ boost::bind(Input, transceiver) };
+	service.run();
 
-	char const* messages[]{ "Test 1111111111", "Test 2", "Test 333", "Test 4", "Test 5", "Test 6", 0 };
-	for (char const** message = messages; *message; ++message) {
-		transceiver->Send(*message);
-	}
-	transceiver->Send("Test 77777777777777777777777777777777");
-	transceiver->Send("Test 8");
-
-	service_.run();
-	transceiver->Cancel();
+	input.join();
 	system("pause");
 }

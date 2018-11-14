@@ -13,6 +13,16 @@ void Transmitter::SetErrorHandler(ErrorHandler errorHandler)
 	errorHandler_ = errorHandler;
 }
 
+void Transmitter::SetSessionId(std::string sessionId)
+{
+	sessionId_ = sessionId;
+}
+
+std::string Transmitter::GetSessionId() const
+{
+	return sessionId_;
+}
+
 Transmitter::Transmitter(boost::asio::io_service& service)
 	: sock_{ service }
 	, transfersCount_{ 0U }

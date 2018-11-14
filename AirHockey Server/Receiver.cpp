@@ -6,6 +6,11 @@ Receiver::SharedPtr Receiver::Create(boost::asio::io_service& service)
 	return receiver;
 }
 
+Receiver::Receiver(boost::asio::io_service& service)
+	: sock_{ service }
+	, isStarted_{ false }
+{}
+
 void Receiver::SetErrorHandler(ErrorHandler errorHandler)
 {
 	errorHandler_ = errorHandler;
@@ -16,10 +21,15 @@ void Receiver::SetAnswerHandler(AnswerHandler answerHandler)
 	answerHandler_ = answerHandler;
 }
 
-Receiver::Receiver(boost::asio::io_service& service)
-	: sock_{ service }
-	, isStarted_{ false }
-{}
+void Receiver::SetSessionId(std::string sessionId)
+{
+	sessionId_ = sessionId;
+}
+
+std::string Receiver::GetSessionId() const
+{
+	return sessionId_;
+}
 
 boost::asio::ip::tcp::socket& Receiver::Sock()
 {

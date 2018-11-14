@@ -16,6 +16,16 @@ void Transceiver::SetAnswerHandler(AnswerHandler answerHandler)
 	answerHandler_ = answerHandler;
 }
 
+void Transceiver::SetSessionId(std::string sessionId)
+{
+	sessionId_ = sessionId;
+}
+
+std::string Transceiver::GetSessionId() const
+{
+	return sessionId_;
+}
+
 Transceiver::Transceiver(boost::asio::io_service& service)
 	: closed_{ false }
 	, sock_{ service }

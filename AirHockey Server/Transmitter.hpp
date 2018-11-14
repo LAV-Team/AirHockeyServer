@@ -13,6 +13,9 @@ public:
 
 	static SharedPtr Create(boost::asio::io_service& service, boost::asio::ip::tcp::endpoint const& ep);
 	void SetErrorHandler(ErrorHandler errorHandler);
+	
+	void SetSessionId(std::string sessionId);
+	std::string GetSessionId() const;
 
 	boost::asio::ip::tcp::socket& Sock();
 
@@ -23,6 +26,7 @@ public:
 private:
 	typedef Transmitter SelfType;
 
+	std::string sessionId_;
 	boost::asio::ip::tcp::socket sock_;
 	ErrorHandler errorHandler_;
 	size_t transfersCount_;
