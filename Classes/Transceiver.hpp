@@ -22,13 +22,10 @@ public:
 	boost::asio::ip::tcp::socket& Sock();
 	
 	void Connect(boost::asio::ip::tcp::endpoint const& ep);
-	void Cancel();
-	void Close();
-
+	void AsyncConnect(boost::asio::ip::tcp::endpoint const& ep);
 	void StartReading();
-	void StopReading();
-
 	void Send(std::string const& message);
+	void Close();
 
 private:
 	typedef Transceiver SelfType;
@@ -48,7 +45,6 @@ private:
 	Transceiver(boost::asio::io_service& service);
 
 	void OnConnect_(const boost::system::error_code& error);
-	void Cancel_();
 
 	void Write_(std::string const& message);
 	void OnWrite_(boost::system::error_code const& error, size_t bytes, bool isEnd = false);

@@ -40,18 +40,12 @@ boost::asio::ip::tcp::socket& Transceiver::Sock()
 
 void Transceiver::Connect(boost::asio::ip::tcp::endpoint const& ep)
 {
+	sock_.connect(ep);
+}
+
+void Transceiver::AsyncConnect(boost::asio::ip::tcp::endpoint const& ep)
+{
 	sock_.async_connect(ep, BIND_WITH_1_ARG(OnConnect_, _1));
-}
-
-void Transceiver::Cancel()
-{
-	closed_ = true;
-	boost::thread{ BIND(Cancel_) };
-}
-
-void Transceiver::Close()
-{
-	sock_.close();
 }
 
 void Transceiver::StartReading()
@@ -65,16 +59,6 @@ void Transceiver::StartReading()
 	Read_();
 }
 
-void Transceiver::StopReading()
-{
-	if (!isReadingStarted_ || closed_) {
-		return;
-	}
-	isReadingStarted_ = false;
-
-	sock_.close();
-}
-
 void Transceiver::Send(std::string const& message)
 {
 	if (!closed_) {
@@ -82,19 +66,20 @@ void Transceiver::Send(std::string const& message)
 	}
 }
 
+void Transceiver::Close()
+{
+	closed_ = true;
+	while (transfersCount_ > 0);
+	Write_(std::string{ MESSAGE_END });
+	while (sock_.is_open());
+}
+
 void Transceiver::OnConnect_(const boost::system::error_code& error)
 {
 	if (error) {
-		Close();
+		sock_.close();
 		if (errorHandler_) errorHandler_(error);
-		return;
 	}
-}
-
-void Transceiver::Cancel_()
-{
-	while (transfersCount_ > 0);
-	Write_(std::string{ MESSAGE_END });
 }
 
 void Transceiver::Write_(std::string const& message)
@@ -117,12 +102,12 @@ void Transceiver::OnWrite_(boost::system::error_code const& error, size_t bytes,
 {
 	--transfersCount_;
 	if (error) {
-		Close();
+		sock_.close();
 		if (errorHandler_) errorHandler_(error);
 		return;
 	}
 	if (isEnd) {
-		Close();
+		sock_.close();
 	}
 }
 
@@ -150,7 +135,7 @@ size_t Transceiver::IsReadingCompleted_(boost::system::error_code const& error, 
 void Transceiver::OnRead_(boost::system::error_code const& error, size_t bytes)
 {
 	if (error) {
-		StopReading();
+		Close();
 		if (errorHandler_) errorHandler_(error);
 		return;
 	}
@@ -163,7 +148,7 @@ void Transceiver::OnRead_(boost::system::error_code const& error, size_t bytes)
 			if (answerHandler_) answerHandler_(message_);
 		}
 		if (isEnd) {
-			StopReading();
+			Close();
 			return;
 		}
 		else {
