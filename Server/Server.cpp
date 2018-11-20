@@ -1,15 +1,18 @@
 #include "Server.hpp"
 
-Server::SharedPtr Server::Create(unsigned short port)
+Server::ServerPtr Server::Create(unsigned short port)
 {
-	SharedPtr server{ new Server{ port } };
+	ServerPtr server{ new Server{ port } };
 	return server;
 }
 
 Server::Server(unsigned short port)
 	: isStarted_{ false }
 	, service_{}
+	, serviceThread_{}
 	, acceptor_{ service_, boost::asio::ip::tcp::endpoint(boost::asio::ip::tcp::v4(), port) }
+	, lastSessionId_{}
+	, sessions_{}
 {}
 
 void Server::Start()
@@ -20,7 +23,7 @@ void Server::Start()
 	isStarted_ = true;
 
 	CreateTransceiver_();
-	service_.run();
+	serviceThread_ = std::thread{ boost::bind(&boost::asio::io_service::run, &service_) };
 }
 
 void Server::Stop()
@@ -29,16 +32,25 @@ void Server::Stop()
 		return;
 	}
 	isStarted_ = false;
-
+	
+	for (auto client : clients_) {
+		if (client->Sock().is_open()) {
+			client->Close();
+		}
+	}
 	service_.stop();
+	serviceThread_.join();
 }
 
 void Server::CreateTransceiver_()
 {
-	Transceiver::SharedPtr client = Transceiver::Create(service_);
-	client->SetErrorHandler(BIND_WITH_2_ARGS(ErrorHandler_, client, _1));
-	client->SetAnswerHandler(BIND_WITH_2_ARGS(AnswerHandler_, client, _1));
-	acceptor_.async_accept(client->Sock(), BIND_WITH_2_ARGS(AcceptHandler_, client, _1));
+	Client::ClientPtr client{ Client::Create(service_) };
+	client->SetErrorHandler(BIND(ErrorHandler_, client, _1));
+	client->SetAnswerHandler(BIND(AnswerHandler_, client, _1));
+	client->SetCloseHandler(BIND(CloseHandler_, client));
+
+	clients_.push_back(client);
+	acceptor_.async_accept(client->Sock(), BIND(AcceptHandler_, client, _1));
 }
 
 std::string Server::GenerateSessionId_()
@@ -63,51 +75,82 @@ std::string Server::GenerateSessionId_()
 	return result;
 }
 
-void Server::AcceptHandler_(Transceiver::SharedPtr client, boost::system::error_code const& error)
+void Server::AcceptHandler_(Client::ClientPtr client, boost::system::error_code const& error)
 {
 	if (lastSessionId_.empty()) {
 		lastSessionId_ = GenerateSessionId_();
 		client->SetSessionId(lastSessionId_);
-		clients_[lastSessionId_].first = client;
-		std::cout << client->GetSessionId() << ": First client." << std::endl;
+		sessions_[lastSessionId_].first = client;
+		std::cout << client->GetSessionId() << ": First client was connected." << std::endl;
 	}
 	else {
 		client->SetSessionId(lastSessionId_);
-		clients_[lastSessionId_].second = client;
+		sessions_[lastSessionId_].second = client;
 		lastSessionId_.clear();
-		std::cout << client->GetSessionId() << ": Second client." << std::endl;
+		std::cout << client->GetSessionId() << ": Second client was connected." << std::endl;
 	}
 
 	client->StartReading();
 	CreateTransceiver_();
 }
 
-void Server::ErrorHandler_(Transceiver::SharedPtr client, boost::system::error_code const& error)
+void Server::ErrorHandler_(Client::ClientPtr client, boost::system::error_code const& error)
 {
 	std::cout << client->GetSessionId() << ": " << error.message() << std::endl;
 }
 
-void Server::AnswerHandler_(Transceiver::SharedPtr client, std::string const& answer)
+void Server::AnswerHandler_(Client::ClientPtr client, std::string const& answer)
 {
-	auto session{ clients_.at(client->GetSessionId()) };
-	if (!session.first || !session.first->Sock().is_open()) {
-		std::cout << client->GetSessionId() << ": No first user in session!" << std::endl;
-		client->Send("No another user in session!");
+	try {
+		auto session{ sessions_.at(client->GetSessionId()) };
+		if (!session.first || !session.first->Sock().is_open()) {
+			std::cout << client->GetSessionId() << ": No first client in session!" << std::endl;
+			client->Send("No another client in session!");
+		}
+		else if (!session.second || !session.second->Sock().is_open()) {
+			std::cout << client->GetSessionId() << ": No second client in session!" << std::endl;
+			client->Send("No another client in session!");
+		}
+		else if (client == session.first) {
+			std::cout << client->GetSessionId() << ": First client sent \"" << answer << "\"" << std::endl;
+			session.second->Send(answer);
+		}
+		else if (client == session.second) {
+			std::cout << client->GetSessionId() << ": Second client sent \"" << answer << "\"" << std::endl;
+			session.first->Send(answer);
+		}
+		else {
+			std::cout << client->GetSessionId() << ": Unknown client in session!" << std::endl;
+			client->Send("You are a strange client!");
+		}
 	}
-	else if (!session.second || !session.second->Sock().is_open()) {
-		std::cout << client->GetSessionId() << ": No second user in session!" << std::endl;
-		client->Send("No another user in session!");
-	}
-	else if (client == session.first) {
-		std::cout << client->GetSessionId() << ": First user sent \"" << answer << "\"" << std::endl;
-		session.second->Send(answer);
-	}
-	else if (client == session.second) {
-		std::cout << client->GetSessionId() << ": Second user sent \"" << answer << "\"" << std::endl;
-		session.first->Send(answer);
-	}
-	else {
-		std::cout << client->GetSessionId() << ": Unknown client in session!" << std::endl;
+	catch(std::out_of_range&) {
+		std::cout << client->GetSessionId() << ": Unknown session id!" << std::endl;
 		client->Send("You are a strange client!");
+	}
+}
+
+void Server::CloseHandler_(Client::ClientPtr client)
+{
+	try {
+		auto session{ sessions_.at(client->GetSessionId()) };
+		if (client == session.first) {
+			std::cout << client->GetSessionId() << ": First client was disconnected!" << std::endl;
+			if (session.second && session.second->Sock().is_open()) {
+				session.second->Send("Another client was disconnected!");
+			}
+		}
+		else if (client == session.second) {
+			std::cout << client->GetSessionId() << ": Second client was disconnected!" << std::endl;
+			if (session.first && session.first->Sock().is_open()) {
+				session.first->Send("Another client was disconnected!");
+			}
+		}
+		else {
+			std::cout << client->GetSessionId() << ": Unknown client was disconnected!" << std::endl;
+		}
+	}
+	catch (std::out_of_range&) {
+		std::cout << client->GetSessionId() << ": Unknown session id of disconnected client!" << std::endl;
 	}
 }

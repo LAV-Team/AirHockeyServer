@@ -8,13 +8,12 @@ class Transmitter
 	, boost::noncopyable
 {
 public:
-	typedef boost::shared_ptr<Transmitter> SharedPtr;
-	typedef boost::function<void(boost::system::error_code const&)> ErrorHandler;
-
-	static SharedPtr Create(boost::asio::io_service& service);
-	void SetErrorHandler(ErrorHandler errorHandler);
+	static TransmitterPtr Create(boost::asio::io_service& service);
+	static TransmitterPtr Create(SocketPtr socket);
+	void SetErrorHandler(OnErrorHandler onErrorHandler);
+	void SetCloseHandler(OnCloseHandler onCloseHandler);
 	
-	boost::asio::ip::tcp::socket& Sock();
+	SocketPtr Sock();
 
 	void Connect(boost::asio::ip::tcp::endpoint const& ep);
 	void AsyncConnect(boost::asio::ip::tcp::endpoint const& ep);
@@ -23,18 +22,24 @@ public:
 
 private:
 	typedef Transmitter SelfType;
+	friend class Transceiver;
 
 	bool closed_;
-	boost::asio::ip::tcp::socket sock_;
-	ErrorHandler errorHandler_;
+	SocketPtr sock_;
 	size_t transfersCount_;
+	OnErrorHandler onErrorHandler_;
+	OnCloseHandler onCloseHandler_;
 
-	Transmitter(boost::asio::io_service& service);
+	explicit Transmitter(boost::asio::io_service& service);
+	explicit Transmitter(SocketPtr socket);
 
 	void OnConnect_(const boost::system::error_code& error);
 
 	void Write_(std::string const& message);
-	void OnWrite_(boost::system::error_code const& error, size_t bytes, bool isEnd = false);
+	void OnWrite_(boost::system::error_code const& error, size_t bytes, char lastChar);
+
+	void SafeClose_(char endChar);
+	void CloseSocket_();
 };
 
 #endif // __TRANSMITTER_INCLUDED__

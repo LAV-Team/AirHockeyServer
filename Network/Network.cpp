@@ -1,8 +1,8 @@
 #include "Network.hpp"
 
-Network::SharedPtr Network::Create()
+Network::NetworkPtr Network::Create()
 {
-	SharedPtr network{ new Network{} };
+	NetworkPtr network{ new Network{} };
 	return network;
 }
 
@@ -13,14 +13,24 @@ Network::Network()
 	, transceiver_{ Transceiver::Create(service_) }
 {}
 
-void Network::SetErrorHandler(ErrorHandler errorHandler)
+void Network::SetErrorHandler(OnErrorHandler onErrorHandler)
 {
-	transceiver_->SetErrorHandler(errorHandler);
+	transceiver_->SetErrorHandler(onErrorHandler);
 }
 
-void Network::SetAnswerHandler(AnswerHandler answerHandler)
+void Network::SetAnswerHandler(OnAnswerHandler onAnswerHandler)
 {
-	transceiver_->SetAnswerHandler(answerHandler);
+	transceiver_->SetAnswerHandler(onAnswerHandler);
+}
+
+void Network::SetCloseHandler(OnCloseHandler onCloseHandler)
+{
+	transceiver_->SetCloseHandler(onCloseHandler);
+}
+
+bool Network::IsConnected()
+{
+	return transceiver_->Sock()->is_open();
 }
 
 bool Network::Connect(boost::asio::ip::tcp::endpoint const& ep)
@@ -29,7 +39,7 @@ bool Network::Connect(boost::asio::ip::tcp::endpoint const& ep)
 		transceiver_->Connect(ep);
 		return true;
 	}
-	catch(boost::exception& e) {
+	catch(boost::exception&) {
 		return false;
 	}
 }
