@@ -16,6 +16,9 @@ public:
 	void SetErrorHandler(ErrorHandler errorHandler);
 	void SetAnswerHandler(AnswerHandler answerHandler);
 
+	void SetSessionId(std::string sessionId);
+	std::string GetSessionId() const;
+
 	boost::asio::ip::tcp::socket& Sock();
 	bool IsStarted();
 
@@ -25,6 +28,7 @@ public:
 private:
 	typedef Receiver SelfType;
 
+	std::string sessionId_;
 	boost::asio::ip::tcp::socket sock_;
 	bool isStarted_;
 	char readBuffer_[BUFFER_LENGTH];

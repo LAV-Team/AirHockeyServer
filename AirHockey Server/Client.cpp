@@ -1,37 +1,62 @@
-#include <iostream>
-#include "Transceiver.hpp"
+#include "Client.hpp"
 
-void ErrorHandler(boost::system::error_code const& error)
+Client::SharedPtr Client::Create(boost::asio::ip::tcp::endpoint ep)
+{
+	SharedPtr client{ new Client{} };
+	client->transceiver_->SetErrorHandler(boost::bind(&Client::ErrorHandler_, client, _1));
+	client->transceiver_->SetAnswerHandler(boost::bind(&Client::AnswerHandler_, client, _1));
+	client->transceiver_->Connect(ep);
+	return client;
+}
+
+Client::Client()
+	: isStarted_{ false }
+	, service_{}
+	, transceiver_{ Transceiver::Create(service_) }
+{}
+
+void Client::Start()
+{
+	if (isStarted_) {
+		return;
+	}
+	isStarted_ = true;
+
+	transceiver_->StartReading();
+	StartAsyncSending_();
+	service_.run();
+}
+
+void Client::Stop()
+{
+	if (!isStarted_) {
+		return;
+	}
+	isStarted_ = false;
+
+	service_.stop();
+}
+
+void Client::StartSending_()
+{
+	std::string message{};
+	while (std::getline(std::cin, message) && message != "/stop") {
+		transceiver_->Send(message);
+	}
+	transceiver_->Cancel();
+}
+
+void Client::StartAsyncSending_()
+{
+	sendingThread_ = std::thread{ BIND(StartSending_) };
+}
+
+void Client::ErrorHandler_(boost::system::error_code const& error)
 {
 	std::cout << error.message() << std::endl;
 }
 
-void AnswerHandler(std::string const& answer)
+void Client::AnswerHandler_(std::string const& answer)
 {
 	std::cout << answer << std::endl;
-}
-
-int main(int argc, char* argv[])
-{
-	setlocale(LC_ALL, "Russian");
-
-	boost::asio::io_service service_;
-	boost::asio::ip::tcp::endpoint ep(boost::asio::ip::address::from_string("127.0.0.1"), 4444);
-	
-	Transceiver::SharedPtr transceiver{ Transceiver::Create(service_) };
-	transceiver->SetErrorHandler(ErrorHandler);
-	transceiver->SetAnswerHandler(AnswerHandler);
-	transceiver->Connect(ep);
-	transceiver->StartReading();
-
-	char const* messages[]{ "Test 1111111111", "Test 2", "Test 333", "Test 4", "Test 5", "Test 6", 0 };
-	for (char const** message = messages; *message; ++message) {
-		transceiver->Send(*message);
-	}
-	transceiver->Send("Test 77777777777777777777777777777777");
-	transceiver->Send("Test 8");
-
-	service_.run();
-	transceiver->Cancel();
-	system("pause");
 }

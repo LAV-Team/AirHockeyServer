@@ -16,6 +16,9 @@ public:
 	void SetErrorHandler(ErrorHandler errorHandler);
 	void SetAnswerHandler(AnswerHandler answerHandler);
 
+	void SetSessionId(std::string sessionId);
+	std::string GetSessionId() const;
+
 	boost::asio::ip::tcp::socket& Sock();
 	
 	void Connect(boost::asio::ip::tcp::endpoint const& ep);
@@ -30,6 +33,7 @@ public:
 private:
 	typedef Transceiver SelfType;
 
+	std::string sessionId_;
 	bool closed_;
 	boost::asio::ip::tcp::socket sock_;
 	ErrorHandler errorHandler_;

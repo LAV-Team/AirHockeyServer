@@ -6,6 +6,13 @@ Transceiver::SharedPtr Transceiver::Create(boost::asio::io_service& service)
 	return transceiver;
 }
 
+Transceiver::Transceiver(boost::asio::io_service& service)
+	: closed_{ false }
+	, sock_{ service }
+	, transfersCount_{ 0U }
+	, isReadingStarted_{ false }
+{}
+
 void Transceiver::SetErrorHandler(ErrorHandler errorHandler)
 {
 	errorHandler_ = errorHandler;
@@ -16,12 +23,15 @@ void Transceiver::SetAnswerHandler(AnswerHandler answerHandler)
 	answerHandler_ = answerHandler;
 }
 
-Transceiver::Transceiver(boost::asio::io_service& service)
-	: closed_{ false }
-	, sock_{ service }
-	, transfersCount_{ 0U }
-	, isReadingStarted_{ false }
-{}
+void Transceiver::SetSessionId(std::string sessionId)
+{
+	sessionId_ = sessionId;
+}
+
+std::string Transceiver::GetSessionId() const
+{
+	return sessionId_;
+}
 
 boost::asio::ip::tcp::socket& Transceiver::Sock()
 {
