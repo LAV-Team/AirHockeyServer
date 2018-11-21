@@ -2,8 +2,7 @@
 #define __SERVER_INCLUDED__
 
 #include <iostream>
-#include <list>
-#include <map>
+#include <unordered_map>
 #include "Client.hpp"
 
 class Server
@@ -25,15 +24,17 @@ private:
 	std::thread serviceThread_;
 	boost::asio::ip::tcp::acceptor acceptor_;
 
-	std::list<Client::ClientPtr> clients_;
-	std::string lastSessionId_;
-	std::map<std::string, std::pair<Client::ClientPtr, Client::ClientPtr>> sessions_;
+	std::list<Client::ClientPtr> freeClients_;
+	std::list<Client::ClientPtr> waitingClients_;
+	std::list<Client::ClientPtr> busyClients_;
 
 	Server(unsigned short port);
 
 	std::string GenerateSessionId_();
+	void MakeSessions_();
+	void StopSession(Client::ClientPtr client);
 	void CreateTransceiver_();
-	
+
 	void AcceptHandler_(Client::ClientPtr client, boost::system::error_code const& error);
 	void ErrorHandler_(Client::ClientPtr client, boost::system::error_code const& error);
 	void AnswerHandler_(Client::ClientPtr client, std::string const& answer);

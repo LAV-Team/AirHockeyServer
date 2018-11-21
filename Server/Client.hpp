@@ -13,15 +13,18 @@ public:
 	void SetCloseHandler(OnCloseHandler onCloseHandler);
 
 	TransceiverPtr GetTransceiver();
-	std::string& GetSessionId();
 	std::string GetSessionId() const;
+	std::string GetShortSessionId() const;
+	ClientPtr GetAnotherClient() const;
 
 	void SetSessionId(std::string sessionId);
+	void SetAnotherClient(ClientPtr anotherClient);
 
-	TransceiverPtr operator->();
-	operator bool();
+	void ClearSessionId();
+	void ClearAnotherClient();
 
 	boost::asio::ip::tcp::socket& Sock();
+	bool IsOpen() const;
 	void StartReading();
 	void Send(std::string const& message);
 	void Close();
@@ -29,6 +32,8 @@ public:
 private:
 	TransceiverPtr transceiver_;
 	std::string sessionId_;
+	std::string shortSessionId_;
+	ClientPtr anotherClient_;
 
 	Client(boost::asio::io_service& service);
 };
