@@ -8,15 +8,13 @@ class Receiver
 	, boost::noncopyable
 {
 public:
-	typedef boost::shared_ptr <Receiver> SharedPtr;
-	typedef boost::function<void(std::string const&)> AnswerHandler;
-	typedef boost::function<void(boost::system::error_code const&)> ErrorHandler;
+	static ReceiverPtr Create(boost::asio::io_service& service);
+	static ReceiverPtr Create(SocketPtr socket);
+	void SetErrorHandler(OnErrorHandler onErrorHandler);
+	void SetAnswerHandler(OnAnswerHandler onAnswerHandler);
+	void SetCloseHandler(OnCloseHandler onCloseHandler);
 
-	static SharedPtr Create(boost::asio::io_service& service);
-	void SetErrorHandler(ErrorHandler errorHandler);
-	void SetAnswerHandler(AnswerHandler answerHandler);
-
-	boost::asio::ip::tcp::socket& Sock();
+	SocketPtr Sock();
 
 	void StartReading();
 	void StopReading();
@@ -24,20 +22,26 @@ public:
 
 private:
 	typedef Receiver SelfType;
+	friend class Transceiver;
 
-	boost::asio::ip::tcp::socket sock_;
-	AnswerHandler answerHandler_;
-	ErrorHandler errorHandler_;
+	SocketPtr sock_;
+	OnErrorHandler onErrorHandler_;
+	OnAnswerHandler onAnswerHandler_;
+	OnCloseHandler onCloseHandler_;
+	boost::function<void(char)> transceiverClose_;
 
 	bool isStarted_;
 	char readBuffer_[BUFFER_LENGTH];
 	std::string message_;
 
-	Receiver(boost::asio::io_service& service);
+	explicit Receiver(boost::asio::io_service& service);
+	explicit Receiver(SocketPtr socket);
 
 	void Read_();
 	size_t IsReadingCompleted_(boost::system::error_code const& error, size_t bytes);
 	void OnRead_(boost::system::error_code const& error, size_t bytes);
+
+	void CloseSocket_();
 };
 
 #endif // __RECEIVER_INCLUDED__

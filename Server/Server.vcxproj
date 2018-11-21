@@ -23,12 +23,14 @@
     <ClInclude Include="..\Classes\Receiver.hpp" />
     <ClInclude Include="..\Classes\Transceiver.hpp" />
     <ClInclude Include="..\Classes\Transmitter.hpp" />
+    <ClInclude Include="Client.hpp" />
     <ClInclude Include="Server.hpp" />
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="..\Classes\Receiver.cpp" />
     <ClCompile Include="..\Classes\Transceiver.cpp" />
     <ClCompile Include="..\Classes\Transmitter.cpp" />
+    <ClCompile Include="Client.cpp" />
     <ClCompile Include="Server.cpp" />
     <ClCompile Include="ServerMain.cpp" />
   </ItemGroup>

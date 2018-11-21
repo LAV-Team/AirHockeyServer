@@ -1,8 +1,6 @@
-#ifndef __CLIENT_INCLUDED__
-#define __CLIENT_INCLUDED__
+#ifndef __NETWORK_INCLUDED__
+#define __NETWORK_INCLUDED__
 
-#include <iostream>
-#include <string>
 #include "../Classes/Transceiver.hpp"
 
 class Network
@@ -10,19 +8,18 @@ class Network
 	, boost::noncopyable
 {
 public:
-	typedef boost::shared_ptr<Network> SharedPtr;
-	typedef Transceiver::AnswerHandler AnswerHandler;
-	typedef Transceiver::ErrorHandler ErrorHandler;
+	typedef boost::shared_ptr<Network> NetworkPtr;
+	static NetworkPtr Create();
+	void SetErrorHandler(OnErrorHandler onErrorHandler);
+	void SetAnswerHandler(OnAnswerHandler onAnswerHandler);
+	void SetCloseHandler(OnCloseHandler onCloseHandler);
 
-	static SharedPtr Create();
-	void SetErrorHandler(ErrorHandler errorHandler);
-	void SetAnswerHandler(AnswerHandler answerHandler);
+	bool IsConnected();
 
 	bool Connect(boost::asio::ip::tcp::endpoint const& ep);
 	void Disconnect();
 
 	void StartReading();
-
 	void Send(std::string const& message);
 
 private:
@@ -31,9 +28,9 @@ private:
 	bool isStarted_;
 	boost::asio::io_service service_;
 	std::thread serviceThread_;
-	Transceiver::SharedPtr transceiver_;
+	TransceiverPtr transceiver_;
 
 	Network();
 };
 
-#endif // __CLIENT_INCLUDED__
+#endif // __NETWORK_INCLUDED__

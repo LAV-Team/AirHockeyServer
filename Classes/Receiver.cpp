@@ -1,37 +1,60 @@
 #include "Receiver.hpp"
 
-Receiver::SharedPtr Receiver::Create(boost::asio::io_service& service)
+ReceiverPtr Receiver::Create(boost::asio::io_service& service)
 {
-	SharedPtr receiver{ new Receiver{ service } };
+	ReceiverPtr receiver{ new Receiver{ service } };
+	return receiver;
+}
+
+ReceiverPtr Receiver::Create(SocketPtr socket)
+{
+	ReceiverPtr receiver{ new Receiver{ socket } };
 	return receiver;
 }
 
 Receiver::Receiver(boost::asio::io_service& service)
-	: sock_{ service }
-	, answerHandler_{}
-	, errorHandler_{}
+	: sock_{ SocketPtr { new boost::asio::ip::tcp::socket{ service } } }
+	, onErrorHandler_{}
+	, onAnswerHandler_{}
+	, onCloseHandler_{}
+	, transceiverClose_{}
 	, isStarted_{ false }
 	, message_{}
 {}
 
-void Receiver::SetErrorHandler(ErrorHandler errorHandler)
+Receiver::Receiver(SocketPtr socket)
+	: sock_{ socket }
+	, onErrorHandler_{}
+	, onAnswerHandler_{}
+	, onCloseHandler_{}
+	, transceiverClose_{}
+	, isStarted_{ false }
+	, message_{}
+{}
+
+void Receiver::SetErrorHandler(OnErrorHandler onErrorHandler)
 {
-	errorHandler_ = errorHandler;
+	onErrorHandler_ = onErrorHandler;
 }
 
-void Receiver::SetAnswerHandler(AnswerHandler answerHandler)
+void Receiver::SetAnswerHandler(OnAnswerHandler onAnswerHandler)
 {
-	answerHandler_ = answerHandler;
+	onAnswerHandler_ = onAnswerHandler;
 }
 
-boost::asio::ip::tcp::socket& Receiver::Sock()
+void Receiver::SetCloseHandler(OnCloseHandler onCloseHandler)
+{
+	onCloseHandler_ = onCloseHandler;
+}
+
+SocketPtr Receiver::Sock()
 {
 	return sock_;
 }
 
 void Receiver::StartReading()
 {
-	if (isStarted_) {
+	if (isStarted_ || !sock_->is_open()) {
 		return;
 	}
 	isStarted_ = true;
@@ -47,53 +70,67 @@ void Receiver::StopReading()
 	}
 	isStarted_ = false;
 
-	sock_.cancel();
+	sock_->cancel();
 }
 
 void Receiver::Close()
 {
-	sock_.close();
+	if (!sock_->is_open()) {
+		return;
+	}
+
+	sock_->close();
+	if (onCloseHandler_) {
+		onCloseHandler_();
+	}
 }
 
 void Receiver::Read_()
 {
-	if (!isStarted_) {
+	if (!sock_->is_open()) {
 		return;
 	}
 
 	boost::asio::async_read(
-		sock_,
+		*sock_,
 		boost::asio::buffer(readBuffer_),
-		BIND_WITH_2_ARGS(IsReadingCompleted_, _1, _2),
-		BIND_WITH_2_ARGS(OnRead_, _1, _2)
+		BIND(IsReadingCompleted_, _1, _2),
+		BIND(OnRead_, _1, _2)
 	);
 }
 
 size_t Receiver::IsReadingCompleted_(boost::system::error_code const& error, size_t bytes)
 {
-	return error || (bytes > 0 && (
-		readBuffer_[bytes - 1] == COMMAND_END || readBuffer_[bytes - 1] == MESSAGE_END
-		)) ? 0 : 1;
+	return error || (bytes > 0 && IS_END(readBuffer_[bytes - 1])) ? 0 : 1;
 }
 
 void Receiver::OnRead_(boost::system::error_code const& error, size_t bytes)
 {
 	if (error) {
+		if (onErrorHandler_) {
+			onErrorHandler_(error);
+		}
 		Close();
-		if (errorHandler_) errorHandler_(error);
 		return;
 	}
 
 	message_ += std::string{ readBuffer_, bytes };
 
-	if (bool isEnd{ message_.back() == MESSAGE_END }; message_.back() == COMMAND_END || isEnd) {
+	char lastChar{ message_.back() };
+	if (IS_END(lastChar)) {
 		message_.pop_back();
 		if (!message_.empty()) {
-			if (answerHandler_) answerHandler_(message_);
+			if (onAnswerHandler_) {
+				onAnswerHandler_(message_);
+			}
 		}
-		if (isEnd) {
-			Close();
-			return;
+		if (IS_STREAM_END(lastChar)) {
+			if (transceiverClose_ && lastChar == TRANSCEIVER_END) {
+				transceiverClose_(TRANSMITTER_END);
+			}
+			else {
+				Close();
+			}
 		}
 		else {
 			message_.clear();
