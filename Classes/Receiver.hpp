@@ -16,25 +16,22 @@ public:
 	void SetErrorHandler(ErrorHandler errorHandler);
 	void SetAnswerHandler(AnswerHandler answerHandler);
 
-	void SetSessionId(std::string sessionId);
-	std::string GetSessionId() const;
-
 	boost::asio::ip::tcp::socket& Sock();
-	bool IsStarted();
 
-	void Start();
-	void Stop();
+	void StartReading();
+	void StopReading();
+	void Close();
 
 private:
 	typedef Receiver SelfType;
 
-	std::string sessionId_;
 	boost::asio::ip::tcp::socket sock_;
+	AnswerHandler answerHandler_;
+	ErrorHandler errorHandler_;
+
 	bool isStarted_;
 	char readBuffer_[BUFFER_LENGTH];
 	std::string message_;
-	AnswerHandler answerHandler_;
-	ErrorHandler errorHandler_;
 
 	Receiver(boost::asio::io_service& service);
 

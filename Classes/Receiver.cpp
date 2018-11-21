@@ -8,7 +8,10 @@ Receiver::SharedPtr Receiver::Create(boost::asio::io_service& service)
 
 Receiver::Receiver(boost::asio::io_service& service)
 	: sock_{ service }
+	, answerHandler_{}
+	, errorHandler_{}
 	, isStarted_{ false }
+	, message_{}
 {}
 
 void Receiver::SetErrorHandler(ErrorHandler errorHandler)
@@ -21,27 +24,12 @@ void Receiver::SetAnswerHandler(AnswerHandler answerHandler)
 	answerHandler_ = answerHandler;
 }
 
-void Receiver::SetSessionId(std::string sessionId)
-{
-	sessionId_ = sessionId;
-}
-
-std::string Receiver::GetSessionId() const
-{
-	return sessionId_;
-}
-
 boost::asio::ip::tcp::socket& Receiver::Sock()
 {
 	return sock_;
 }
 
-bool Receiver::IsStarted()
-{
-	return isStarted_;
-}
-
-void Receiver::Start()
+void Receiver::StartReading()
 {
 	if (isStarted_) {
 		return;
@@ -52,13 +40,18 @@ void Receiver::Start()
 	Read_();
 }
 
-void Receiver::Stop()
+void Receiver::StopReading()
 {
 	if (!isStarted_) {
 		return;
 	}
 	isStarted_ = false;
 
+	sock_.cancel();
+}
+
+void Receiver::Close()
+{
 	sock_.close();
 }
 
@@ -86,7 +79,7 @@ size_t Receiver::IsReadingCompleted_(boost::system::error_code const& error, siz
 void Receiver::OnRead_(boost::system::error_code const& error, size_t bytes)
 {
 	if (error) {
-		Stop();
+		Close();
 		if (errorHandler_) errorHandler_(error);
 		return;
 	}
@@ -99,7 +92,7 @@ void Receiver::OnRead_(boost::system::error_code const& error, size_t bytes)
 			if (answerHandler_) answerHandler_(message_);
 		}
 		if (isEnd) {
-			Stop();
+			Close();
 			return;
 		}
 		else {

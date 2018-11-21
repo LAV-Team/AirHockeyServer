@@ -15,16 +15,16 @@
     </Filter>
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="Receiver.hpp">
+    <ClInclude Include="..\Classes\Global.hpp">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="Transmitter.hpp">
+    <ClInclude Include="..\Classes\Receiver.hpp">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="Global.hpp">
+    <ClInclude Include="..\Classes\Transceiver.hpp">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="Transceiver.hpp">
+    <ClInclude Include="..\Classes\Transmitter.hpp">
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="Server.hpp">
@@ -32,19 +32,19 @@
     </ClInclude>
   </ItemGroup>
   <ItemGroup>
-    <ClCompile Include="Receiver.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
-    <ClCompile Include="Transmitter.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
-    <ClCompile Include="Transceiver.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
     <ClCompile Include="Server.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="ServerMain.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="..\Classes\Transmitter.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="..\Classes\Transceiver.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="..\Classes\Receiver.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
   </ItemGroup>
