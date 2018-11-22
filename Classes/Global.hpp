@@ -23,12 +23,21 @@ typedef boost::function<void(boost::system::error_code const&)> OnErrorHandler;
 typedef boost::function<void(std::string const&)> OnAnswerHandler;
 typedef boost::function<void()> OnCloseHandler;
 
-static char const COMMAND_END = '\x01';
-static char const TRANSMITTER_END = '\x02';
-static char const TRANSCEIVER_END = '\x03';
+static std::string const NO_SESSION{ "SN" };
+static std::string const UNKNOWN_SESSION{ "SU" };
+static std::string const SESSION_BEGIN{ "SB" };
+static std::string const SESSION_END{ "SE" };
+static std::string const WAIT_SESSION{ "SW" };
+static std::string const STOP_WAITING_SESSION{ "SF" };
+static std::string const STOP_SESSION{ "ST" };
 
-static size_t const BUFFER_LENGTH = 256U;
-static size_t const SESSION_ID_LENGTH = 8U;
+static char const COMMAND_END{ '\x01' };
+static char const TRANSMITTER_END{ '\x02' };
+static char const TRANSCEIVER_END{ '\x03' };
+
+static size_t const BUFFER_LENGTH{ 256U };
+static size_t const SESSION_ID_LENGTH{ 16U };
+static size_t const SHORT_SESSION_ID_LENGTH{ 7U };
 
 #define BIND(a, ...) boost::bind(&SelfType::a, shared_from_this(), __VA_ARGS__)
 #define IS_COMMAND_END(ch) ((ch) == COMMAND_END)

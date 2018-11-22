@@ -9,6 +9,7 @@ Client::ClientPtr Client::Create(boost::asio::io_service& service)
 Client::Client(boost::asio::io_service& service)
 	: transceiver_{ Transceiver::Create(service) }
 	, sessionId_{}
+	, shortSessionId_{}
 {}
 
 void Client::SetErrorHandler(OnErrorHandler onErrorHandler)
@@ -31,34 +32,51 @@ TransceiverPtr Client::GetTransceiver()
 	return transceiver_;
 }
 
-std::string& Client::GetSessionId()
-{
-	return sessionId_;
-}
-
 std::string Client::GetSessionId() const
 {
 	return sessionId_;
 }
 
+std::string Client::GetShortSessionId() const
+{
+	return shortSessionId_;
+}
+
+Client::ClientPtr Client::GetAnotherClient() const
+{
+	return anotherClient_;
+}
+
 void Client::SetSessionId(std::string sessionId)
 {
 	sessionId_ = sessionId;
+	shortSessionId_ = std::string{ sessionId.begin(), sessionId.begin() + SHORT_SESSION_ID_LENGTH };
 }
 
-TransceiverPtr Client::operator->()
+void Client::SetAnotherClient(ClientPtr anotherClient)
 {
-	return transceiver_;
+	anotherClient_ = anotherClient;
 }
 
-Client::operator bool()
+void Client::ClearSessionId()
 {
-	return static_cast<bool>(transceiver_);
+	sessionId_.clear();
+	shortSessionId_.clear();
+}
+
+void Client::ClearAnotherClient()
+{
+	anotherClient_.reset();
 }
 
 boost::asio::ip::tcp::socket& Client::Sock()
 {
-	return *transceiver_->Sock();
+	return *(transceiver_->Sock());
+}
+
+bool Client::IsOpen() const
+{
+	return transceiver_->Sock()->is_open();
 }
 
 void Client::StartReading()

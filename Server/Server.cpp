@@ -11,8 +11,9 @@ Server::Server(unsigned short port)
 	, service_{}
 	, serviceThread_{}
 	, acceptor_{ service_, boost::asio::ip::tcp::endpoint(boost::asio::ip::tcp::v4(), port) }
-	, lastSessionId_{}
-	, sessions_{}
+	, freeClients_{}
+	, waitingClients_{}
+	, busyClients_{}
 {}
 
 void Server::Start()
@@ -32,30 +33,24 @@ void Server::Stop()
 		return;
 	}
 	isStarted_ = false;
-	
-	for (auto client : clients_) {
-		if (client->Sock().is_open()) {
-			client->Close();
-		}
+
+	for (auto& client : busyClients_) {
+		client->Close();
+	}
+	for (auto& client : waitingClients_) {
+		client->Close();
+	}
+	for (auto& client : freeClients_) {
+		client->Close();
 	}
 	service_.stop();
 	serviceThread_.join();
 }
 
-void Server::CreateTransceiver_()
-{
-	Client::ClientPtr client{ Client::Create(service_) };
-	client->SetErrorHandler(BIND(ErrorHandler_, client, _1));
-	client->SetAnswerHandler(BIND(AnswerHandler_, client, _1));
-	client->SetCloseHandler(BIND(CloseHandler_, client));
-
-	clients_.push_back(client);
-	acceptor_.async_accept(client->Sock(), BIND(AcceptHandler_, client, _1));
-}
-
 std::string Server::GenerateSessionId_()
 {
 	std::string result{};
+	srand(static_cast<unsigned int>(time(0)));
 	for (size_t i{ 0U }; i < SESSION_ID_LENGTH; ++i) {
 		switch (rand() % 5)
 		{
@@ -75,82 +70,133 @@ std::string Server::GenerateSessionId_()
 	return result;
 }
 
+void Server::MakeSessions_()
+{
+	while (waitingClients_.size() > 1) {
+		std::string sessionId{ GenerateSessionId_() };
+		auto first{ waitingClients_.front() };
+		waitingClients_.pop_front();
+		auto second{ waitingClients_.front() };
+		waitingClients_.pop_front();
+		
+		first->SetSessionId(sessionId);
+		first->SetAnotherClient(second);
+		second->SetSessionId(sessionId);
+		second->SetAnotherClient(first);
+
+		first->Send(SESSION_BEGIN);
+		second->Send(SESSION_BEGIN);
+		std::cout << "Session " << first->GetShortSessionId() << " started." << std::endl;
+
+		busyClients_.push_back(first);
+		busyClients_.push_back(second);
+	}
+}
+
+void Server::CreateTransceiver_()
+{
+	Client::ClientPtr client{ Client::Create(service_) };
+	client->SetErrorHandler(BIND(ErrorHandler_, client, _1));
+	client->SetAnswerHandler(BIND(AnswerHandler_, client, _1));
+	client->SetCloseHandler(BIND(CloseHandler_, client));
+	acceptor_.async_accept(client->Sock(), BIND(AcceptHandler_, client, _1));
+}
+
 void Server::AcceptHandler_(Client::ClientPtr client, boost::system::error_code const& error)
 {
-	if (lastSessionId_.empty()) {
-		lastSessionId_ = GenerateSessionId_();
-		client->SetSessionId(lastSessionId_);
-		sessions_[lastSessionId_].first = client;
-		std::cout << client->GetSessionId() << ": First client was connected." << std::endl;
-	}
-	else {
-		client->SetSessionId(lastSessionId_);
-		sessions_[lastSessionId_].second = client;
-		lastSessionId_.clear();
-		std::cout << client->GetSessionId() << ": Second client was connected." << std::endl;
-	}
+	CreateTransceiver_();
 
 	client->StartReading();
-	CreateTransceiver_();
+	freeClients_.push_back(client);
 }
 
 void Server::ErrorHandler_(Client::ClientPtr client, boost::system::error_code const& error)
 {
-	std::cout << client->GetSessionId() << ": " << error.message() << std::endl;
+	std::cout << client->GetShortSessionId() << ": " << error.message() << std::endl;
 }
 
 void Server::AnswerHandler_(Client::ClientPtr client, std::string const& answer)
 {
-	try {
-		auto session{ sessions_.at(client->GetSessionId()) };
-		if (!session.first || !session.first->Sock().is_open()) {
-			std::cout << client->GetSessionId() << ": No first client in session!" << std::endl;
-			client->Send("No another client in session!");
+	// No another client
+	if (client->GetSessionId().empty() || !client->GetAnotherClient()) {
+		// From free to waiting
+		if (answer == WAIT_SESSION) {
+			auto it{ std::find(freeClients_.begin(), freeClients_.end(), client) };
+			if (it != freeClients_.end()) {
+				freeClients_.erase(it);
+				waitingClients_.push_back(client);
+				MakeSessions_();
+			}
 		}
-		else if (!session.second || !session.second->Sock().is_open()) {
-			std::cout << client->GetSessionId() << ": No second client in session!" << std::endl;
-			client->Send("No another client in session!");
+		// From waiting to free
+		else if (answer == STOP_WAITING_SESSION) {
+			auto it{ std::find(waitingClients_.begin(), waitingClients_.end(), client) };
+			if (it != waitingClients_.end()) {
+				waitingClients_.erase(it);
+				freeClients_.push_back(client);
+			}
 		}
-		else if (client == session.first) {
-			std::cout << client->GetSessionId() << ": First client sent \"" << answer << "\"" << std::endl;
-			session.second->Send(answer);
-		}
-		else if (client == session.second) {
-			std::cout << client->GetSessionId() << ": Second client sent \"" << answer << "\"" << std::endl;
-			session.first->Send(answer);
-		}
+		// Unknown answer from not busy user
 		else {
-			std::cout << client->GetSessionId() << ": Unknown client in session!" << std::endl;
-			client->Send("You are a strange client!");
+			std::cout << "Answer from empty session id!" << std::endl;
+			client->Send(NO_SESSION);
 		}
+		return;
 	}
-	catch(std::out_of_range&) {
-		std::cout << client->GetSessionId() << ": Unknown session id!" << std::endl;
-		client->Send("You are a strange client!");
+
+	// Incorrect session id
+	if (client->GetSessionId() != client->GetAnotherClient()->GetSessionId()) {
+		std::cout << "Answer from unknown session id: " << client->GetShortSessionId() << "!" << std::endl;
+		client->Send(UNKNOWN_SESSION);
+		return;
+	}
+
+	// Stop session
+	if (answer == STOP_SESSION) {
+		std::cout << "Session " << client->GetShortSessionId() << " stopped." << std::endl;
+
+		client->GetAnotherClient()->Send(SESSION_END);
+		client->GetAnotherClient()->ClearSessionId();
+		client->GetAnotherClient()->ClearAnotherClient();
+		busyClients_.remove(client->GetAnotherClient());
+		freeClients_.push_back(client->GetAnotherClient());
+
+		client->Send(SESSION_END);
+		client->ClearSessionId();
+		client->ClearAnotherClient();
+		busyClients_.remove(client);
+		freeClients_.push_back(client);
+	}
+	// Transceive message
+	else {
+		std::cout << client->GetShortSessionId() << ": client sent \"" << answer << "\"" << std::endl;
+		client->GetAnotherClient()->Send(answer);
 	}
 }
 
 void Server::CloseHandler_(Client::ClientPtr client)
 {
-	try {
-		auto session{ sessions_.at(client->GetSessionId()) };
-		if (client == session.first) {
-			std::cout << client->GetSessionId() << ": First client was disconnected!" << std::endl;
-			if (session.second && session.second->Sock().is_open()) {
-				session.second->Send("Another client was disconnected!");
-			}
-		}
-		else if (client == session.second) {
-			std::cout << client->GetSessionId() << ": Second client was disconnected!" << std::endl;
-			if (session.first && session.first->Sock().is_open()) {
-				session.first->Send("Another client was disconnected!");
-			}
-		}
-		else {
-			std::cout << client->GetSessionId() << ": Unknown client was disconnected!" << std::endl;
-		}
+	// No another client => not busy
+	if (client->GetSessionId().empty() || !client->GetAnotherClient()) {
+		std::cout << "Some client was disconnected!" << std::endl;
+		freeClients_.remove(client);
+		waitingClients_.remove(client);
+		return;
 	}
-	catch (std::out_of_range&) {
-		std::cout << client->GetSessionId() << ": Unknown session id of disconnected client!" << std::endl;
+
+	busyClients_.remove(client);
+	// Incorrect session id
+	if (client->GetSessionId() != client->GetAnotherClient()->GetSessionId()) {
+		std::cout << "Client with unknown session id was disconnected!" << std::endl;
+	}
+	// Kick another user from busy to free
+	else {
+		std::cout << "Session " << client->GetShortSessionId() << " stopped." << std::endl;
+		client->GetAnotherClient()->Send(SESSION_END);
+		client->GetAnotherClient()->ClearSessionId();
+		client->GetAnotherClient()->ClearAnotherClient();
+
+		busyClients_.remove(client->GetAnotherClient());
+		freeClients_.push_back(client->GetAnotherClient());
 	}
 }

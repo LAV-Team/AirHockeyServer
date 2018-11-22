@@ -13,7 +13,7 @@ void OnAnswer(std::string const& answer)
 
 void OnClose()
 {
-	std::cout << "Server does't want to talk with you :c\nPress \"enter\" to continue..." << std::endl;
+	std::cout << "Server does't want to talk with you :c" << std::endl;
 }
 
 int main(int argc, char* argv[])
