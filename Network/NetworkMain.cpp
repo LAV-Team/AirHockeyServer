@@ -25,7 +25,7 @@ int main(int argc, char* argv[])
 	std::cout << "Enter IP (blank for 127.0.0.1): ";
 	std::getline(std::cin, buffer);
 	address = buffer.empty() ? "127.0.0.1" : buffer;
-	
+
 	unsigned short port{ 0U };
 	std::cout << "Enter port (blank for 4444): ";
 	std::getline(std::cin, buffer);
@@ -41,9 +41,18 @@ int main(int argc, char* argv[])
 		std::cout << "Connected to " << address << ":" << port << "..." << std::endl;
 		network->StartReading();
 		while (std::getline(std::cin, buffer) && network->IsConnected()) {
-			if (buffer == "/stop") {
+			if (buffer == "/exit") {
 				std::cout << "Stopping..." << std::endl;
 				break;
+			}
+			else if (buffer == "/wait") {
+				network->Send(WAIT_SESSION);
+			}
+			else if (buffer == "/stop") {
+				network->Send(STOP_WAITING_SESSION);
+			}
+			else if (buffer == "/cancel") {
+				network->Send(STOP_SESSION);
 			}
 			else if (!buffer.empty()) {
 				network->Send(buffer);
