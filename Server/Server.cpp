@@ -1,12 +1,12 @@
 #include "Server.hpp"
 
-Server::ServerPtr Server::Create(unsigned short port)
+HockeyNet::ServerPtr HockeyNet::Server::Create(unsigned short port)
 {
 	ServerPtr server{ new Server{ port } };
 	return server;
 }
 
-Server::Server(unsigned short port)
+HockeyNet::Server::Server(unsigned short port)
 	: isStarted_{ false }
 	, service_{}
 	, serviceThread_{}
@@ -16,7 +16,7 @@ Server::Server(unsigned short port)
 	, busyClients_{}
 {}
 
-void Server::Start()
+void HockeyNet::Server::Start()
 {
 	if (isStarted_) {
 		return;
@@ -27,7 +27,7 @@ void Server::Start()
 	serviceThread_ = std::thread{ boost::bind(&boost::asio::io_service::run, &service_) };
 }
 
-void Server::Stop()
+void HockeyNet::Server::Stop()
 {
 	if (!isStarted_) {
 		return;
@@ -47,7 +47,7 @@ void Server::Stop()
 	serviceThread_.join();
 }
 
-std::string Server::GenerateSessionId_()
+std::string HockeyNet::Server::GenerateSessionId_()
 {
 	std::string result{};
 	srand(static_cast<unsigned int>(time(0)));
@@ -70,7 +70,7 @@ std::string Server::GenerateSessionId_()
 	return result;
 }
 
-void Server::MakeSessions_()
+void HockeyNet::Server::MakeSessions_()
 {
 	while (waitingClients_.size() > 1) {
 		std::string sessionId{ GenerateSessionId_() };
@@ -93,16 +93,16 @@ void Server::MakeSessions_()
 	}
 }
 
-void Server::CreateTransceiver_()
+void HockeyNet::Server::CreateTransceiver_()
 {
-	Client::ClientPtr client{ Client::Create(service_) };
+	ClientPtr client{ Client::Create(service_) };
 	client->SetErrorHandler(BIND(ErrorHandler_, client, _1));
 	client->SetAnswerHandler(BIND(AnswerHandler_, client, _1));
 	client->SetCloseHandler(BIND(CloseHandler_, client));
 	acceptor_.async_accept(client->Sock(), BIND(AcceptHandler_, client, _1));
 }
 
-void Server::AcceptHandler_(Client::ClientPtr client, boost::system::error_code const& error)
+void HockeyNet::Server::AcceptHandler_(ClientPtr client, boost::system::error_code const& error)
 {
 	CreateTransceiver_();
 
@@ -110,12 +110,12 @@ void Server::AcceptHandler_(Client::ClientPtr client, boost::system::error_code 
 	freeClients_.push_back(client);
 }
 
-void Server::ErrorHandler_(Client::ClientPtr client, boost::system::error_code const& error)
+void HockeyNet::Server::ErrorHandler_(ClientPtr client, boost::system::error_code const& error)
 {
 	std::cout << client->GetShortSessionId() << ": " << error.message() << std::endl;
 }
 
-void Server::AnswerHandler_(Client::ClientPtr client, std::string const& answer)
+void HockeyNet::Server::AnswerHandler_(ClientPtr client, std::string const& answer)
 {
 	// No another client
 	if (client->GetSessionId().empty() || !client->GetAnotherClient()) {
@@ -174,7 +174,7 @@ void Server::AnswerHandler_(Client::ClientPtr client, std::string const& answer)
 	}
 }
 
-void Server::CloseHandler_(Client::ClientPtr client)
+void HockeyNet::Server::CloseHandler_(ClientPtr client)
 {
 	// No another client => not busy
 	if (client->GetSessionId().empty() || !client->GetAnotherClient()) {

@@ -1,18 +1,18 @@
 #include "Receiver.hpp"
 
-ReceiverPtr Receiver::Create(boost::asio::io_service& service)
+HockeyNet::ReceiverPtr HockeyNet::Receiver::Create(boost::asio::io_service& service)
 {
 	ReceiverPtr receiver{ new Receiver{ service } };
 	return receiver;
 }
 
-ReceiverPtr Receiver::Create(SocketPtr socket)
+HockeyNet::ReceiverPtr HockeyNet::Receiver::Create(SocketPtr socket)
 {
 	ReceiverPtr receiver{ new Receiver{ socket } };
 	return receiver;
 }
 
-Receiver::Receiver(boost::asio::io_service& service)
+HockeyNet::Receiver::Receiver(boost::asio::io_service& service)
 	: sock_{ SocketPtr { new boost::asio::ip::tcp::socket{ service } } }
 	, onErrorHandler_{}
 	, onAnswerHandler_{}
@@ -22,7 +22,7 @@ Receiver::Receiver(boost::asio::io_service& service)
 	, message_{}
 {}
 
-Receiver::Receiver(SocketPtr socket)
+HockeyNet::Receiver::Receiver(SocketPtr socket)
 	: sock_{ socket }
 	, onErrorHandler_{}
 	, onAnswerHandler_{}
@@ -32,27 +32,27 @@ Receiver::Receiver(SocketPtr socket)
 	, message_{}
 {}
 
-void Receiver::SetErrorHandler(OnErrorHandler onErrorHandler)
+void HockeyNet::Receiver::SetErrorHandler(OnErrorHandler onErrorHandler)
 {
 	onErrorHandler_ = onErrorHandler;
 }
 
-void Receiver::SetAnswerHandler(OnAnswerHandler onAnswerHandler)
+void HockeyNet::Receiver::SetAnswerHandler(OnAnswerHandler onAnswerHandler)
 {
 	onAnswerHandler_ = onAnswerHandler;
 }
 
-void Receiver::SetCloseHandler(OnCloseHandler onCloseHandler)
+void HockeyNet::Receiver::SetCloseHandler(OnCloseHandler onCloseHandler)
 {
 	onCloseHandler_ = onCloseHandler;
 }
 
-SocketPtr Receiver::Sock()
+HockeyNet::SocketPtr HockeyNet::Receiver::Sock()
 {
 	return sock_;
 }
 
-void Receiver::StartReading()
+void HockeyNet::Receiver::StartReading()
 {
 	if (isStarted_ || !sock_->is_open()) {
 		return;
@@ -63,7 +63,7 @@ void Receiver::StartReading()
 	Read_();
 }
 
-void Receiver::StopReading()
+void HockeyNet::Receiver::StopReading()
 {
 	if (!isStarted_) {
 		return;
@@ -73,7 +73,7 @@ void Receiver::StopReading()
 	sock_->cancel();
 }
 
-void Receiver::Close()
+void HockeyNet::Receiver::Close()
 {
 	if (!sock_->is_open()) {
 		return;
@@ -85,7 +85,7 @@ void Receiver::Close()
 	}
 }
 
-void Receiver::Read_()
+void HockeyNet::Receiver::Read_()
 {
 	if (!sock_->is_open()) {
 		return;
@@ -99,12 +99,12 @@ void Receiver::Read_()
 	);
 }
 
-size_t Receiver::IsReadingCompleted_(boost::system::error_code const& error, size_t bytes)
+size_t HockeyNet::Receiver::IsReadingCompleted_(boost::system::error_code const& error, size_t bytes)
 {
 	return error || (bytes > 0 && IS_END(readBuffer_[bytes - 1])) ? 0 : 1;
 }
 
-void Receiver::OnRead_(boost::system::error_code const& error, size_t bytes)
+void HockeyNet::Receiver::OnRead_(boost::system::error_code const& error, size_t bytes)
 {
 	if (error) {
 		if (onErrorHandler_) {

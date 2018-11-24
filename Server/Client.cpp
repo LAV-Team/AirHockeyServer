@@ -1,95 +1,95 @@
 #include "Client.hpp"
 
-Client::ClientPtr Client::Create(boost::asio::io_service& service)
+HockeyNet::ClientPtr HockeyNet::Client::Create(boost::asio::io_service& service)
 {
 	ClientPtr client{ new Client{ service } };
 	return client;
 }
 
-Client::Client(boost::asio::io_service& service)
+HockeyNet::Client::Client(boost::asio::io_service& service)
 	: transceiver_{ Transceiver::Create(service) }
 	, sessionId_{}
 	, shortSessionId_{}
 {}
 
-void Client::SetErrorHandler(OnErrorHandler onErrorHandler)
+void HockeyNet::Client::SetErrorHandler(OnErrorHandler onErrorHandler)
 {
 	transceiver_->SetErrorHandler(onErrorHandler);
 }
 
-void Client::SetAnswerHandler(OnAnswerHandler onAnswerHandler)
+void HockeyNet::Client::SetAnswerHandler(OnAnswerHandler onAnswerHandler)
 {
 	transceiver_->SetAnswerHandler(onAnswerHandler);
 }
 
-void Client::SetCloseHandler(OnCloseHandler onCloseHandler)
+void HockeyNet::Client::SetCloseHandler(OnCloseHandler onCloseHandler)
 {
 	transceiver_->SetCloseHandler(onCloseHandler);
 }
 
-TransceiverPtr Client::GetTransceiver()
+HockeyNet::TransceiverPtr HockeyNet::Client::GetTransceiver()
 {
 	return transceiver_;
 }
 
-std::string Client::GetSessionId() const
+std::string HockeyNet::Client::GetSessionId() const
 {
 	return sessionId_;
 }
 
-std::string Client::GetShortSessionId() const
+std::string HockeyNet::Client::GetShortSessionId() const
 {
 	return shortSessionId_;
 }
 
-Client::ClientPtr Client::GetAnotherClient() const
+HockeyNet::ClientPtr HockeyNet::Client::GetAnotherClient() const
 {
 	return anotherClient_;
 }
 
-void Client::SetSessionId(std::string sessionId)
+void HockeyNet::Client::SetSessionId(std::string sessionId)
 {
 	sessionId_ = sessionId;
 	shortSessionId_ = std::string{ sessionId.begin(), sessionId.begin() + SHORT_SESSION_ID_LENGTH };
 }
 
-void Client::SetAnotherClient(ClientPtr anotherClient)
+void HockeyNet::Client::SetAnotherClient(ClientPtr anotherClient)
 {
 	anotherClient_ = anotherClient;
 }
 
-void Client::ClearSessionId()
+void HockeyNet::Client::ClearSessionId()
 {
 	sessionId_.clear();
 	shortSessionId_.clear();
 }
 
-void Client::ClearAnotherClient()
+void HockeyNet::Client::ClearAnotherClient()
 {
 	anotherClient_.reset();
 }
 
-boost::asio::ip::tcp::socket& Client::Sock()
+boost::asio::ip::tcp::socket& HockeyNet::Client::Sock()
 {
 	return *(transceiver_->Sock());
 }
 
-bool Client::IsOpen() const
+bool HockeyNet::Client::IsOpen() const
 {
 	return transceiver_->Sock()->is_open();
 }
 
-void Client::StartReading()
+void HockeyNet::Client::StartReading()
 {
 	transceiver_->StartReading();
 }
 
-void Client::Send(std::string const& message)
+void HockeyNet::Client::Send(std::string const& message)
 {
 	transceiver_->Send(message);
 }
 
-void Client::Close()
+void HockeyNet::Client::Close()
 {
 	transceiver_->Close();
 }

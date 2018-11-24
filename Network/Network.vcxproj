@@ -146,7 +146,7 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
-    <ClInclude Include="..\Classes\Global.hpp" />
+    <ClInclude Include="..\Classes\General.hpp" />
     <ClInclude Include="..\Classes\Receiver.hpp" />
     <ClInclude Include="..\Classes\Transceiver.hpp" />
     <ClInclude Include="..\Classes\Transmitter.hpp" />

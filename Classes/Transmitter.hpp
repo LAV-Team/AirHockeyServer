@@ -1,45 +1,48 @@
 #ifndef __TRANSMITTER_INCLUDED__
 #define __TRANSMITTER_INCLUDED__
 
-#include "Global.hpp"
+#include "General.hpp"
 
-class Transmitter
-	: public boost::enable_shared_from_this<Transmitter>
-	, boost::noncopyable
+namespace HockeyNet
 {
-public:
-	static TransmitterPtr Create(boost::asio::io_service& service);
-	static TransmitterPtr Create(SocketPtr socket);
-	void SetErrorHandler(OnErrorHandler onErrorHandler);
-	void SetCloseHandler(OnCloseHandler onCloseHandler);
-	
-	SocketPtr Sock();
+	class Transmitter
+		: public boost::enable_shared_from_this<Transmitter>
+		, boost::noncopyable
+	{
+	public:
+		static TransmitterPtr Create(boost::asio::io_service& service);
+		static TransmitterPtr Create(SocketPtr socket);
+		void SetErrorHandler(OnErrorHandler onErrorHandler);
+		void SetCloseHandler(OnCloseHandler onCloseHandler);
 
-	void Connect(boost::asio::ip::tcp::endpoint const& ep);
-	void AsyncConnect(boost::asio::ip::tcp::endpoint const& ep);
-	void Send(std::string const& message);
-	void Close();
+		SocketPtr Sock();
 
-private:
-	typedef Transmitter SelfType;
-	friend class Transceiver;
+		void Connect(boost::asio::ip::tcp::endpoint const& ep);
+		void AsyncConnect(boost::asio::ip::tcp::endpoint const& ep);
+		void Send(std::string const& message);
+		void Close();
 
-	bool closed_;
-	SocketPtr sock_;
-	size_t transfersCount_;
-	OnErrorHandler onErrorHandler_;
-	OnCloseHandler onCloseHandler_;
+	private:
+		typedef Transmitter SelfType;
+		friend class Transceiver;
 
-	explicit Transmitter(boost::asio::io_service& service);
-	explicit Transmitter(SocketPtr socket);
+		bool closed_;
+		SocketPtr sock_;
+		size_t transfersCount_;
+		OnErrorHandler onErrorHandler_;
+		OnCloseHandler onCloseHandler_;
 
-	void OnConnect_(const boost::system::error_code& error);
+		explicit Transmitter(boost::asio::io_service& service);
+		explicit Transmitter(SocketPtr socket);
 
-	void Write_(std::string const& message);
-	void OnWrite_(boost::system::error_code const& error, size_t bytes, char lastChar);
+		void OnConnect_(const boost::system::error_code& error);
 
-	void SafeClose_(char endChar);
-	void CloseSocket_();
+		void Write_(std::string const& message);
+		void OnWrite_(boost::system::error_code const& error, size_t bytes, char lastChar);
+
+		void SafeClose_(char endChar);
+		void CloseSocket_();
+	};
 };
 
 #endif // __TRANSMITTER_INCLUDED__

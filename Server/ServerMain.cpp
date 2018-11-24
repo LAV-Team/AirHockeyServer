@@ -11,7 +11,7 @@ int main(int argc, char* argv[])
 	std::getline(std::cin, buffer);
 	port = buffer.empty() ? 4444 : static_cast<unsigned short>(std::stoul(buffer));
 
-	Server::ServerPtr server{ Server::Create(port) };
+	HockeyNet::ServerPtr server{ HockeyNet::Server::Create(port) };
 	server->Start();
 	std::cout << "Server started on " << port << " port..." << std::endl;
 	while (std::getline(std::cin, buffer)) {

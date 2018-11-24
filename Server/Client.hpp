@@ -3,39 +3,47 @@
 
 #include "../Classes/Transceiver.hpp"
 
-struct Client
+namespace HockeyNet
 {
-public:
+	class Client;
 	typedef boost::shared_ptr<Client> ClientPtr;
-	static ClientPtr Create(boost::asio::io_service& service);
-	void SetErrorHandler(OnErrorHandler onErrorHandler);
-	void SetAnswerHandler(OnAnswerHandler onAnswerHandler);
-	void SetCloseHandler(OnCloseHandler onCloseHandler);
 
-	TransceiverPtr GetTransceiver();
-	std::string GetSessionId() const;
-	std::string GetShortSessionId() const;
-	ClientPtr GetAnotherClient() const;
+	static size_t const SESSION_ID_LENGTH{ 16U };
+	static size_t const SHORT_SESSION_ID_LENGTH{ 7U };
 
-	void SetSessionId(std::string sessionId);
-	void SetAnotherClient(ClientPtr anotherClient);
+	class Client
+	{
+	public:
+		static ClientPtr Create(boost::asio::io_service& service);
+		void SetErrorHandler(OnErrorHandler onErrorHandler);
+		void SetAnswerHandler(OnAnswerHandler onAnswerHandler);
+		void SetCloseHandler(OnCloseHandler onCloseHandler);
 
-	void ClearSessionId();
-	void ClearAnotherClient();
+		TransceiverPtr GetTransceiver();
+		std::string GetSessionId() const;
+		std::string GetShortSessionId() const;
+		ClientPtr GetAnotherClient() const;
 
-	boost::asio::ip::tcp::socket& Sock();
-	bool IsOpen() const;
-	void StartReading();
-	void Send(std::string const& message);
-	void Close();
+		void SetSessionId(std::string sessionId);
+		void SetAnotherClient(ClientPtr anotherClient);
 
-private:
-	TransceiverPtr transceiver_;
-	std::string sessionId_;
-	std::string shortSessionId_;
-	ClientPtr anotherClient_;
+		void ClearSessionId();
+		void ClearAnotherClient();
 
-	Client(boost::asio::io_service& service);
+		boost::asio::ip::tcp::socket& Sock();
+		bool IsOpen() const;
+		void StartReading();
+		void Send(std::string const& message);
+		void Close();
+
+	private:
+		TransceiverPtr transceiver_;
+		std::string sessionId_;
+		std::string shortSessionId_;
+		ClientPtr anotherClient_;
+
+		Client(boost::asio::io_service& service);
+	};
 };
 
 #endif // __CLIENT_INCLUDED__
