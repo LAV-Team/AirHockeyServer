@@ -33,7 +33,7 @@ int main(int argc, char* argv[])
 
 	boost::asio::ip::tcp::endpoint ep(boost::asio::ip::address::from_string(address), port);
 
-	Network::NetworkPtr network{ Network::Create() };
+	HockeyNet::NetworkPtr network{ HockeyNet::Network::Create() };
 	network->SetErrorHandler(OnError);
 	network->SetAnswerHandler(OnAnswer);
 	network->SetCloseHandler(OnClose);
@@ -46,13 +46,13 @@ int main(int argc, char* argv[])
 				break;
 			}
 			else if (buffer == "/wait") {
-				network->Send(WAIT_SESSION);
+				network->Send(HockeyNet::WAIT_SESSION);
 			}
 			else if (buffer == "/stop") {
-				network->Send(STOP_WAITING_SESSION);
+				network->Send(HockeyNet::STOP_WAITING_SESSION);
 			}
 			else if (buffer == "/cancel") {
-				network->Send(STOP_SESSION);
+				network->Send(HockeyNet::STOP_SESSION);
 			}
 			else if (!buffer.empty()) {
 				network->Send(buffer);

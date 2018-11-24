@@ -5,40 +5,44 @@
 #include <unordered_map>
 #include "Client.hpp"
 
-class Server
-	: public boost::enable_shared_from_this<Server>
-	, boost::noncopyable
+namespace HockeyNet
 {
-public:
+	class Server;
 	typedef boost::shared_ptr<Server> ServerPtr;
-	static ServerPtr Create(unsigned short port);
 
-	void Start();
-	void Stop();
+	class Server
+		: public boost::enable_shared_from_this<Server>
+		, boost::noncopyable
+	{
+	public:
+		static ServerPtr Create(unsigned short port);
 
-private:
-	typedef Server SelfType;
+		void Start();
+		void Stop();
 
-	bool isStarted_;
-	boost::asio::io_service service_;
-	std::thread serviceThread_;
-	boost::asio::ip::tcp::acceptor acceptor_;
+	private:
+		typedef Server SelfType;
 
-	std::list<Client::ClientPtr> freeClients_;
-	std::list<Client::ClientPtr> waitingClients_;
-	std::list<Client::ClientPtr> busyClients_;
+		bool isStarted_;
+		boost::asio::io_service service_;
+		std::thread serviceThread_;
+		boost::asio::ip::tcp::acceptor acceptor_;
 
-	Server(unsigned short port);
+		std::list<ClientPtr> freeClients_;
+		std::list<ClientPtr> waitingClients_;
+		std::list<ClientPtr> busyClients_;
 
-	std::string GenerateSessionId_();
-	void MakeSessions_();
-	void StopSession(Client::ClientPtr client);
-	void CreateTransceiver_();
+		Server(unsigned short port);
 
-	void AcceptHandler_(Client::ClientPtr client, boost::system::error_code const& error);
-	void ErrorHandler_(Client::ClientPtr client, boost::system::error_code const& error);
-	void AnswerHandler_(Client::ClientPtr client, std::string const& answer);
-	void CloseHandler_(Client::ClientPtr client);
+		std::string GenerateSessionId_();
+		void MakeSessions_();
+		void CreateTransceiver_();
+
+		void AcceptHandler_(ClientPtr client, boost::system::error_code const& error);
+		void ErrorHandler_(ClientPtr client, boost::system::error_code const& error);
+		void AnswerHandler_(ClientPtr client, std::string const& answer);
+		void CloseHandler_(ClientPtr client);
+	};
 };
 
 #endif // __SERVER_INCLUDED__

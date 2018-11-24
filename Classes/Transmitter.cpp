@@ -1,18 +1,18 @@
 #include "Transmitter.hpp"
 
-TransmitterPtr Transmitter::Create(boost::asio::io_service& service)
+HockeyNet::TransmitterPtr HockeyNet::Transmitter::Create(boost::asio::io_service& service)
 {
 	TransmitterPtr transmitter{ new Transmitter{ service } };
 	return transmitter;
 }
 
-TransmitterPtr Transmitter::Create(SocketPtr socket)
+HockeyNet::TransmitterPtr HockeyNet::Transmitter::Create(SocketPtr socket)
 {
 	TransmitterPtr transmitter{ new Transmitter{ socket } };
 	return transmitter;
 }
 
-Transmitter::Transmitter(boost::asio::io_service& service)
+HockeyNet::Transmitter::Transmitter(boost::asio::io_service& service)
 	: closed_{ false }
 	, sock_{ SocketPtr { new boost::asio::ip::tcp::socket{ service } } }
 	, transfersCount_{ 0U }
@@ -20,7 +20,7 @@ Transmitter::Transmitter(boost::asio::io_service& service)
 	, onCloseHandler_{}
 {}
 
-Transmitter::Transmitter(SocketPtr socket)
+HockeyNet::Transmitter::Transmitter(SocketPtr socket)
 	: closed_{ false }
 	, sock_{ socket }
 	, transfersCount_{ 0U }
@@ -28,43 +28,43 @@ Transmitter::Transmitter(SocketPtr socket)
 	, onCloseHandler_{}
 {}
 
-void Transmitter::SetErrorHandler(OnErrorHandler onErrorHandler)
+void HockeyNet::Transmitter::SetErrorHandler(OnErrorHandler onErrorHandler)
 {
 	onErrorHandler_ = onErrorHandler;
 }
 
-void Transmitter::SetCloseHandler(OnCloseHandler onCloseHandler)
+void HockeyNet::Transmitter::SetCloseHandler(OnCloseHandler onCloseHandler)
 {
 	onCloseHandler_ = onCloseHandler;
 }
 
-SocketPtr Transmitter::Sock()
+HockeyNet::SocketPtr HockeyNet::Transmitter::Sock()
 {
 	return sock_;
 }
 
-void Transmitter::Connect(boost::asio::ip::tcp::endpoint const& ep)
+void HockeyNet::Transmitter::Connect(boost::asio::ip::tcp::endpoint const& ep)
 {
 	if (!sock_->is_open()) {
 		sock_->connect(ep);
 	}
 }
 
-void Transmitter::AsyncConnect(boost::asio::ip::tcp::endpoint const& ep)
+void HockeyNet::Transmitter::AsyncConnect(boost::asio::ip::tcp::endpoint const& ep)
 {
 	if (!sock_->is_open()) {
 		sock_->async_connect(ep, BIND(OnConnect_, _1));
 	}
 }
 
-void Transmitter::Send(std::string const& message)
+void HockeyNet::Transmitter::Send(std::string const& message)
 {
 	if (!closed_ && sock_->is_open()) {
 		Write_(message);
 	}
 }
 
-void Transmitter::Close()
+void HockeyNet::Transmitter::Close()
 {
 	if (!closed_ && sock_->is_open()) {
 		SafeClose_(TRANSMITTER_END);
@@ -72,7 +72,7 @@ void Transmitter::Close()
 	}
 }
 
-void Transmitter::OnConnect_(const boost::system::error_code& error)
+void HockeyNet::Transmitter::OnConnect_(const boost::system::error_code& error)
 {
 	if (error) {
 		sock_->close();
@@ -83,7 +83,7 @@ void Transmitter::OnConnect_(const boost::system::error_code& error)
 	}
 }
 
-void Transmitter::Write_(std::string const& message)
+void HockeyNet::Transmitter::Write_(std::string const& message)
 {
 	if (!sock_->is_open()) {
 		return;
@@ -101,7 +101,7 @@ void Transmitter::Write_(std::string const& message)
 	);
 }
 
-void Transmitter::OnWrite_(boost::system::error_code const& error, size_t bytes, char lastChar)
+void HockeyNet::Transmitter::OnWrite_(boost::system::error_code const& error, size_t bytes, char lastChar)
 {
 	--transfersCount_;
 	if (error) {
@@ -116,7 +116,7 @@ void Transmitter::OnWrite_(boost::system::error_code const& error, size_t bytes,
 	}
 }
 
-void Transmitter::SafeClose_(char endChar)
+void HockeyNet::Transmitter::SafeClose_(char endChar)
 {
 	if (closed_) {
 		return;
@@ -127,7 +127,7 @@ void Transmitter::SafeClose_(char endChar)
 	Write_(std::string{ endChar });
 }
 
-void Transmitter::CloseSocket_()
+void HockeyNet::Transmitter::CloseSocket_()
 {
 	if (!sock_->is_open()) {
 		return;
